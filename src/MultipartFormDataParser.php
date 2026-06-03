@@ -103,8 +103,16 @@ class MultipartFormDataParser
                     }
                 }
                 $file["size"] = self::toFormattedBytes($file["size"]);
-                $_FILES[$headers['content-disposition']['name']] = $file;
-                $dataset->files[$headers['content-disposition']['name']] = $file;
+
+                $fileArrayName = $headers['content-disposition']['name'];
+
+                if(mb_strpos($fileArrayName, '[]', 0, 'UTF-8') !== false){
+                    $_FILES[$fileArrayName][] = $file;
+                    $dataset->files[$fileArrayName][] = $file;
+                } else {
+                    $_FILES[$fileArrayName] = $file;
+                    $dataset->files[$fileArrayName] = $file;
+                }
             } else {
                 //parameters
                 $dataset->params[$headers['content-disposition']['name']] = $value;

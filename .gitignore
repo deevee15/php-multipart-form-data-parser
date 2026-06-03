@@ -5,3 +5,4 @@ vendor
 test/vendor
 test/composer.lock
 test/.phpunit.result.cache
+.DS_Store
