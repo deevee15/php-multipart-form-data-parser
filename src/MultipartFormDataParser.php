@@ -36,7 +36,7 @@ class MultipartFormDataParser
         $dataset->cookies = $cookies;
 
         $contentType = (array_key_exists("content-type", $dataset->headers)) ? $dataset->headers["content-type"] : "";
-        $dataset = new MultipartFormDataset();
+        // $dataset = new MultipartFormDataset(); // no need for this. it clears previous data
 
         if ($method === "GET") {
             $dataset->params = (is_null($request)) ? $_GET : $request->query->all();
@@ -65,11 +65,14 @@ class MultipartFormDataParser
         $bodyParts = preg_split('/\\R?-+' . preg_quote($boundary, '/') . '/s', $rawRequestData);
         array_pop($bodyParts);
 
+        $finalFileArray = [];
+
         foreach ($bodyParts as $bodyPart) {
             if (empty($bodyPart)) {
                 continue;
             }
-            [$headers, $value] = preg_split('/\\R\\R/', $bodyPart, 2);
+            // [$headers, $value] = preg_split('/\\R\\R/', $bodyPart, 2); // incorrect preg pattern - may be errors with speicific content
+            [$headers, $value] = preg_split("/\r\n\r\n/", $bodyPart, 2);
             $headers =self::parseHeaders($headers);
             if (!isset($headers['content-disposition']['name'])) {
                 continue;
@@ -102,14 +105,24 @@ class MultipartFormDataParser
                         }
                     }
                 }
-                $file["size"] = self::toFormattedBytes($file["size"]);
+                // $file["size"] = self::toFormattedBytes($file["size"]); its incorrect for typical php file array - should be bytes
 
                 $fileArrayName = $headers['content-disposition']['name'];
 
                 if(mb_strpos($fileArrayName, '[]', 0, 'UTF-8') !== false){
-                    $_FILES[$fileArrayName][] = $file;
-                    $dataset->files[$fileArrayName][] = $file;
-                } else {
+                    $fileArrayName = str_replace('[]', '', $fileArrayName);
+
+                    $finalFileArray[$fileArrayName]['name'][] = $file['name'];
+                    $finalFileArray[$fileArrayName]['type'][] = $file['type'];
+                    $finalFileArray[$fileArrayName]['size'][] = $file['size'];
+                    $finalFileArray[$fileArrayName]['error'][] = $file['error'];
+                    $finalFileArray[$fileArrayName]['tmp_name'][] = $file['tmp_name'];
+                    $finalFileArray[$fileArrayName]['tmp_resource'][] = $file['tmp_resource'];
+
+                    $_FILES[$fileArrayName] = $finalFileArray[$fileArrayName];
+                    $dataset->files[$fileArrayName] = $finalFileArray[$fileArrayName];
+                }
+                else{
                     $_FILES[$fileArrayName] = $file;
                     $dataset->files[$fileArrayName] = $file;
                 }
